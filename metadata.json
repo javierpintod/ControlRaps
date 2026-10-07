@@ -2,5 +2,7 @@
   "name": "Sena Analytics Institutional",
   "description": "Plataforma analítica institucional y auditoría de juicios evaluativos del SENA con ingesta por lotes, control DirectQuery y matrices de aprendizaje.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -1,30 +1,22 @@
 import * as XLSX from 'xlsx';
-import { Aprendiz, IngestionRowError, JuicioEstado } from '../types';
+import { FilaJuicio, FilaJuicioSchema, IngestionRowError, JuicioEstado } from '../types';
 
-export interface ParsedJuicioRow {
+export interface ParsedJuicioRowResult {
   fila: number;
-  tipoDocumento: string;
-  numeroDocumento: string;
-  nombres: string;
-  apellidos: string;
-  codigoFicha: string;
-  competenciaCodigo: string;
-  rapCodigo: string;
-  rapDescripcion: string;
-  juicioEvaluativo: JuicioEstado | string;
-  instructorEvaluador: string;
-  fechaJuicio: string;
+  data?: FilaJuicio;
+  raw: Record<string, any>;
   valido: boolean;
   errores: string[];
 }
 
-export function parseExcelOrCsvFile(dataBuffer: ArrayBuffer | Uint8Array): {
-  rows: ParsedJuicioRow[];
+export function parseExcelWithZod(dataBuffer: ArrayBuffer | Uint8Array): {
+  rows: ParsedJuicioRowResult[];
   errors: IngestionRowError[];
   totalFilas: number;
   filasValidas: number;
   filasConError: number;
-  advertencias: number;
+  aprendicesUnicos: number;
+  programasUnicos: number;
 } {
   const workbook = XLSX.read(dataBuffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
@@ -44,33 +36,32 @@ export function parseExcelOrCsvFile(dataBuffer: ArrayBuffer | Uint8Array): {
       totalFilas: 0,
       filasValidas: 0,
       filasConError: 1,
-      advertencias: 0,
+      aprendicesUnicos: 0,
+      programasUnicos: 0,
     };
   }
 
-  // Header inspection
-  const headers = (jsonData[0] as string[]).map(h => String(h || '').trim().toLowerCase());
-  const rows: ParsedJuicioRow[] = [];
+  const rawHeaders = (jsonData[0] as string[]).map(h => String(h || '').trim().toLowerCase());
+  const rows: ParsedJuicioRowResult[] = [];
   const errors: IngestionRowError[] = [];
-  let validCount = 0;
-  let warnCount = 0;
 
-  // Expected column matching
   const findCol = (possibleNames: string[]) => {
-    return headers.findIndex(h => possibleNames.some(p => h.includes(p)));
+    return rawHeaders.findIndex(h => possibleNames.some(p => h.includes(p)));
   };
 
-  const colTipoDoc = findCol(['tipo', 'tdoc', 'tipo_doc']);
-  const colDoc = findCol(['documento', 'numero_doc', 'identificacion', 'cedula']);
-  const colNombres = findCol(['nombre', 'nombres']);
-  const colApellidos = findCol(['apellido', 'apellidos']);
-  const colFicha = findCol(['ficha', 'codigo_ficha']);
-  const colCompetencia = findCol(['competencia', 'comp_cod']);
-  const colRap = findCol(['rap', 'resultado', 'codigo_rap']);
-  const colDescripcion = findCol(['descripcion', 'desc_rap', 'detalle']);
-  const colJuicio = findCol(['juicio', 'estado', 'evaluativo', 'calificacion']);
-  const colInstructor = findCol(['instructor', 'evaluador', 'docente']);
-  const colFecha = findCol(['fecha', 'fecha_juicio']);
+  const colTipoId = findCol(['tipo_identificacion', 'tipo_doc', 'tipo', 'tdoc']);
+  const colNumId = findCol(['numero_identificacion', 'documento', 'numero_doc', 'identificacion', 'cedula']);
+  const colNombre = findCol(['nombre_completo', 'nombre_aprendiz', 'nombre', 'nombres']);
+  const colEmail = findCol(['email', 'correo', 'correo_electronico']);
+  const colCodProg = findCol(['codigo_programa', 'cod_programa', 'ficha', 'programa_codigo']);
+  const colNomProg = findCol(['nombre_programa', 'programa', 'programa_formacion']);
+  const colComp = findCol(['competencia', 'codigo_competencia', 'competencia_nombre']);
+  const colRap = findCol(['resultado_aprendizaje', 'rap', 'resultado']);
+  const colJuicio = findCol(['juicio', 'juicio_evaluativo', 'estado', 'calificacion']);
+  const colFecha = findCol(['fecha_evaluacion', 'fecha', 'fecha_juicio']);
+
+  const aprendicesSet = new Set<string>();
+  const programasSet = new Set<string>();
 
   for (let i = 1; i < jsonData.length; i++) {
     const r = jsonData[i];
@@ -78,132 +69,140 @@ export function parseExcelOrCsvFile(dataBuffer: ArrayBuffer | Uint8Array): {
       continue;
     }
 
-    const rowErrors: string[] = [];
-    const tipoDoc = String(colTipoDoc >= 0 ? r[colTipoDoc] || 'CC' : 'CC').trim().toUpperCase();
-    const doc = String(colDoc >= 0 ? r[colDoc] || '' : '').trim();
-    const nombres = String(colNombres >= 0 ? r[colNombres] || '' : '').trim();
-    const apellidos = String(colApellidos >= 0 ? r[colApellidos] || '' : '').trim();
-    const ficha = String(colFicha >= 0 ? r[colFicha] || '2671982' : '2671982').trim();
-    const competencia = String(colCompetencia >= 0 ? r[colCompetencia] || '220501096' : '220501096').trim();
-    const rap = String(colRap >= 0 ? r[colRap] || '' : '').trim();
-    const desc = String(colDescripcion >= 0 ? r[colDescripcion] || 'Resultado de Aprendizaje Técnico' : 'Resultado de Aprendizaje Técnico').trim();
-    let juicioRaw = String(colJuicio >= 0 ? r[colJuicio] || 'Por Evaluar' : 'Por Evaluar').trim();
-    const instructor = String(colInstructor >= 0 ? r[colInstructor] || 'Instructor Asignado' : 'Instructor Asignado').trim();
-    const fecha = String(colFecha >= 0 ? r[colFecha] || new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]).trim();
+    const rowNumber = i + 1;
+    const rawObj: Record<string, any> = {
+      tipo_identificacion: String(colTipoId >= 0 ? r[colTipoId] || 'CC' : 'CC').trim().toUpperCase(),
+      numero_identificacion: String(colNumId >= 0 ? r[colNumId] || '' : '').trim(),
+      nombre_completo: String(colNombre >= 0 ? r[colNombre] || '' : '').trim(),
+      email: String(colEmail >= 0 ? r[colEmail] || '' : '').trim(),
+      codigo_programa: String(colCodProg >= 0 ? r[colCodProg] || '228106' : '228106').trim(),
+      nombre_programa: String(colNomProg >= 0 ? r[colNomProg] || 'Análisis y Desarrollo de Software (ADSO)' : 'Análisis y Desarrollo de Software (ADSO)').trim(),
+      competencia: String(colComp >= 0 ? r[colComp] || '' : '').trim(),
+      resultado_aprendizaje: String(colRap >= 0 ? r[colRap] || '' : '').trim(),
+      juicio: String(colJuicio >= 0 ? r[colJuicio] || 'POR_EVALUAR' : 'POR_EVALUAR').trim(),
+      fecha_evaluacion: colFecha >= 0 && r[colFecha] ? r[colFecha] : undefined,
+    };
 
-    // Normalizing juicio evaluativo
-    let juicio: JuicioEstado = 'Por Evaluar';
-    const lowerJ = juicioRaw.toLowerCase();
-    if (lowerJ.includes('aprob') || lowerJ === 'a' || lowerJ === 'aprobado') {
-      juicio = 'Aprobado';
-    } else if (lowerJ.includes('no') || lowerJ.includes('defic') || lowerJ === 'd' || lowerJ === 'no aprobado') {
-      juicio = 'No Aprobado';
+    // Normalize Juicio Evaluativo to APROBADO, POR_EVALUAR, NO_APROBADO
+    const rawJ = String(rawObj.juicio).toUpperCase();
+    if (rawJ.includes('APROB') || rawJ === 'A') {
+      rawObj.juicio = 'APROBADO';
+    } else if (rawJ.includes('NO') || rawJ.includes('DEFIC') || rawJ === 'D') {
+      rawObj.juicio = 'NO_APROBADO';
     } else {
-      juicio = 'Por Evaluar';
+      rawObj.juicio = 'POR_EVALUAR';
     }
 
-    // Validation rules
-    if (!doc || doc.length < 5) {
-      rowErrors.push('Número de documento inválido o ausente');
-      errors.push({
-        fila: i + 1,
-        campo: 'numeroDocumento',
-        valor: doc || '(vacío)',
-        tipo: 'Error',
-        descripcion: 'El documento debe contener al menos 5 dígitos numéricos.',
+    // Normalizing Tipo Identificacion enum
+    const rawT = String(rawObj.tipo_identificacion).toUpperCase();
+    if (['CC', 'TI', 'CE', 'PEP', 'PASAPORTE'].includes(rawT)) {
+      rawObj.tipo_identificacion = rawT;
+    } else {
+      rawObj.tipo_identificacion = 'CC';
+    }
+
+    // Execute strict Zod Schema validation
+    const parsed = FilaJuicioSchema.safeParse(rawObj);
+
+    if (parsed.success) {
+      if (parsed.data.numero_identificacion) {
+        aprendicesSet.add(parsed.data.numero_identificacion);
+      }
+      if (parsed.data.codigo_programa) {
+        programasSet.add(parsed.data.codigo_programa);
+      }
+
+      rows.push({
+        fila: rowNumber,
+        data: parsed.data,
+        raw: rawObj,
+        valido: true,
+        errores: [],
+      });
+    } else {
+      const issues = parsed.error.issues;
+      const errorDescriptions: string[] = [];
+
+      issues.forEach(issue => {
+        const fieldName = issue.path.join('.');
+        const description = issue.message;
+        errorDescriptions.push(`${fieldName}: ${description}`);
+
+        errors.push({
+          fila: rowNumber,
+          campo: fieldName,
+          valor: String(rawObj[fieldName] || '(vacío)'),
+          tipo: 'Error',
+          descripcion: description,
+        });
+      });
+
+      rows.push({
+        fila: rowNumber,
+        raw: rawObj,
+        valido: false,
+        errores: errorDescriptions,
       });
     }
-
-    if (!nombres) {
-      rowErrors.push('Nombres del aprendiz requeridos');
-      errors.push({
-        fila: i + 1,
-        campo: 'nombres',
-        valor: '(vacío)',
-        tipo: 'Error',
-        descripcion: 'Campo obligatorio para identificación de aprendiz.',
-      });
-    }
-
-    if (!rap) {
-      rowErrors.push('Código de RAP ausente');
-      errors.push({
-        fila: i + 1,
-        campo: 'rapCodigo',
-        valor: '(vacío)',
-        tipo: 'Error',
-        descripcion: 'Debe especificarse el identificador único del Resultado de Aprendizaje.',
-      });
-    }
-
-    if (juicio === 'Por Evaluar') {
-      warnCount++;
-      errors.push({
-        fila: i + 1,
-        campo: 'juicioEvaluativo',
-        valor: juicioRaw,
-        tipo: 'Advertencia',
-        descripcion: 'El resultado permanece pendiente de calificación formal por el instructor.',
-      });
-    }
-
-    const isValid = rowErrors.length === 0;
-    if (isValid) validCount++;
-
-    rows.push({
-      fila: i + 1,
-      tipoDocumento: tipoDoc,
-      numeroDocumento: doc,
-      nombres,
-      apellidos,
-      codigoFicha: ficha,
-      competenciaCodigo: competencia,
-      rapCodigo: rap || 'RAP-GEN-01',
-      rapDescripcion: desc,
-      juicioEvaluativo: juicio,
-      instructorEvaluador: instructor,
-      fechaJuicio: fecha,
-      valido: isValid,
-      errores: rowErrors,
-    });
   }
 
-  const errCount = rows.filter(r => !r.valido).length;
+  const filasConError = rows.filter(r => !r.valido).length;
+  const filasValidas = rows.filter(r => r.valido).length;
 
   return {
     rows,
     errors,
     totalFilas: rows.length,
-    filasValidas: validCount,
-    filasConError: errCount,
-    advertencias: warnCount,
+    filasValidas,
+    filasConError,
+    aprendicesUnicos: aprendicesSet.size,
+    programasUnicos: programasSet.size,
   };
+}
+
+export function downloadErrorLogCsv(errors: IngestionRowError[]): void {
+  const headers = ['Numero_Fila', 'Columna_Afectada', 'Valor_Encontrado', 'Tipo_Fallo', 'Motivo_Rechazo'];
+  const rows = errors.map(err => [
+    err.fila,
+    `"${err.campo}"`,
+    `"${String(err.valor).replace(/"/g, '""')}"`,
+    `"${err.tipo}"`,
+    `"${err.descripcion.replace(/"/g, '""')}"`,
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Reporte_Inconsistencias_Juicios_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function generateSenaSampleWorkbook(): Uint8Array {
   const sampleHeaders = [
-    'Tipo Documento',
-    'Numero Documento',
-    'Nombres',
-    'Apellidos',
-    'Codigo Ficha',
-    'Codigo Competencia',
-    'Codigo RAP',
-    'Descripcion RAP',
-    'Juicio Evaluativo',
-    'Instructor Evaluador',
-    'Fecha Juicio'
+    'tipo_identificacion',
+    'numero_identificacion',
+    'nombre_completo',
+    'email',
+    'codigo_programa',
+    'nombre_programa',
+    'competencia',
+    'resultado_aprendizaje',
+    'juicio',
+    'fecha_evaluacion'
   ];
 
   const sampleRows = [
-    ['CC', '1014298102', 'Valentina', 'Ríos Cárdenas', '2671982', '220501096', '220501096-01', 'Caracterizar procesos de software', 'Aprobado', 'Ing. Carlos Mendoza', '2026-09-18'],
-    ['CC', '1014298102', 'Valentina', 'Ríos Cárdenas', '2671982', '220501093', '220501093-01', 'Construir bases de datos relacionales', 'Aprobado', 'Ing. Carlos Mendoza', '2026-09-18'],
-    ['CC', '1020491820', 'Mateo Alejandro', 'Suárez Bermúdez', '2671982', '220501096', '220501096-02', 'Elaborar diagramas y modelos de arquitectura', 'Aprobado', 'Ing. Carlos Mendoza', '2026-09-14'],
-    ['CC', '1020491820', 'Mateo Alejandro', 'Suárez Bermúdez', '2671982', '220501095', '220501095-02', 'Implementar servicios RESTful y microservicios', 'Por Evaluar', 'Ing. Carlos Mendoza', ''],
-    ['CC', '1032890145', 'Daniel Fernando', 'Gutiérrez Pinzón', '2671982', '220501093', '220501093-02', 'Normalización y optimización SQL', 'No Aprobado', 'Ing. Carlos Mendoza', '2026-09-10'],
-    ['TI', '1077654321', 'Camila Andrea', 'Montoya Restrepo', '2671982', '220501095', '220501095-01', 'Desarrollar componentes web frontend', 'Aprobado', 'Lic. Fernando Ospina', '2026-09-22'],
-    ['CC', '1098456123', 'Esteban José', 'Herrera Morales', '2710493', '220501096', '220501096-01', 'Arquitectura de seguridad en redes', 'Aprobado', 'Ing. Diana Rincón', '2026-09-25'],
-    ['CC', '1054321890', 'Sara Sofía', 'Zuluaga Henao', '2710493', '220501096', '220501096-02', 'Implementación de túneles VPN y TLS', 'Por Evaluar', 'Ing. Diana Rincón', ''],
+    ['CC', '1014298102', 'Valentina Ríos Cárdenas', 'vrios@soy.sena.edu.co', '228106', 'Análisis y Desarrollo de Software (ADSO)', 'Especificación de Requisitos de Software', 'Caracterizar los procesos de la organización de acuerdo con el marco y estándares.', 'APROBADO', '2026-09-18'],
+    ['CC', '1014298102', 'Valentina Ríos Cárdenas', 'vrios@soy.sena.edu.co', '228106', 'Análisis y Desarrollo de Software (ADSO)', 'Modelado y Gestión de Bases de Datos', 'Construir bases de datos relacionales y no relacionales según especificaciones.', 'APROBADO', '2026-09-18'],
+    ['CC', '1020491820', 'Mateo Alejandro Suárez Bermúdez', 'msuarez@soy.sena.edu.co', '228106', 'Análisis y Desarrollo de Software (ADSO)', 'Especificación de Requisitos de Software', 'Elaborar diagramas y modelos de arquitectura según requerimientos funcionales.', 'APROBADO', '2026-09-14'],
+    ['CC', '1020491820', 'Mateo Alejandro Suárez Bermúdez', 'msuarez@soy.sena.edu.co', '228106', 'Análisis y Desarrollo de Software (ADSO)', 'Desarrollo de Software Web Full-Stack', 'Implementar servicios web RESTful y microservicios seguros con autenticación JWT.', 'POR_EVALUAR', ''],
+    ['CC', '1032890145', 'Daniel Fernando Gutiérrez Pinzón', 'dgutierrez@soy.sena.edu.co', '228106', 'Análisis y Desarrollo de Software (ADSO)', 'Modelado y Gestión de Bases de Datos', 'Aplicar procedimientos de normalización y optimización SQL bajo estándares ACID.', 'NO_APROBADO', '2026-09-10'],
+    ['TI', '1077654321', 'Camila Andrea Montoya Restrepo', 'cmontoya@soy.sena.edu.co', '228118', 'Gestión de Redes y Ciberseguridad', 'Arquitectura y Seguridad en Redes WAN', 'Configurar enrutamiento seguro y listas de control de acceso ACL.', 'APROBADO', '2026-09-22'],
+    ['CC', '1098456123', 'Esteban José Herrera Morales', 'eherrera@soy.sena.edu.co', '228118', 'Gestión de Redes y Ciberseguridad', 'Ciberseguridad y Análisis Forense', 'Implementar contramedidas y políticas de seguridad bajo estándar ISO 27001.', 'APROBADO', '2026-09-25'],
+    ['CC', '1011889922', 'Andrés Felipe Pardo Caicedo', 'apardo@soy.sena.edu.co', '228120', 'Inteligencia Artificial Aplicada a Negocios', 'Pipelines de Machine Learning y Datos', 'Entrenar y desplegar modelos supervisados para predicción de series temporales.', 'APROBADO', '2026-09-02'],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([sampleHeaders, ...sampleRows]);
@@ -211,34 +210,4 @@ export function generateSenaSampleWorkbook(): Uint8Array {
   XLSX.utils.book_append_sheet(wb, ws, 'Juicios_Evaluativos');
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Uint8Array(wbout);
-}
-
-export function exportConsolidatedReportToExcel(aprendices: Aprendiz[]): void {
-  const flatData: any[] = [];
-
-  aprendices.forEach(ap => {
-    ap.raps.forEach(rap => {
-      flatData.push({
-        'Ficha': ap.fichaId.replace('f-', ''),
-        'Tipo Doc': ap.tipoDocumento,
-        'N° Documento': ap.numeroDocumento,
-        'Aprendiz': `${ap.nombres} ${ap.apellidos}`,
-        'Email': ap.email,
-        'Estado Formación': ap.estadoFormacion,
-        'Cód. Competencia': rap.competenciaCodigo,
-        'Competencia': rap.competenciaNombre,
-        'Cód. RAP': rap.codigo,
-        'Descripción RAP': rap.descripcion,
-        'Juicio Evaluativo': rap.estado,
-        'Instructor Evaluador': rap.instructorEvaluador,
-        'Fecha Juicio': rap.fechaJuicio || 'Pendiente',
-        'Observaciones': rap.observaciones || 'Sin observaciones',
-      });
-    });
-  });
-
-  const ws = XLSX.utils.json_to_sheet(flatData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Matriz_Juicios_SENA');
-  XLSX.writeFile(wb, `SENA_Analytics_Matriz_Juicios_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
