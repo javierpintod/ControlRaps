@@ -10,9 +10,15 @@ require_once __DIR__ . '/includes/data_helper.php';
 $currentUser = requireAuth();
 $repo = new SenaRepository();
 
-$programas = $repo->getProgramas();
-$cargas = $repo->getCargas();
-$aprendices = $repo->getAprendices();
+$activeCentroId = getActiveCentroId();
+$activeCoordId = getActiveCoordinacionId();
+
+$activeCentro = $repo->getCentroById($activeCentroId);
+$activeCoord = $activeCoordId !== 'TODAS' ? $repo->getCoordinacionById($activeCoordId) : null;
+
+$programas = $repo->getProgramas($activeCentroId);
+$cargas = $repo->getCargas($activeCentroId);
+$aprendices = $repo->getAprendices($activeCentroId, $activeCoordId);
 
 // Filtros
 $selectedPrograma = $_GET['programa'] ?? 'Todos';
@@ -58,12 +64,43 @@ foreach ($filteredAprendices as $ap) {
 }
 
 $tasaAprobacion = $totalEvaluaciones > 0 ? round(($evaluacionesAprobadas / $totalEvaluaciones) * 100, 1) : 0;
-$canUpload = hasRole(['ADMIN', 'LIDER_FORMACION']);
+$canUpload = hasRole(['ADMIN', 'LIDER_FORMACION', 'COORDINADOR']);
 
 require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="space-y-6">
+    <!-- Banner de Contexto de Coordinación / Centro -->
+    <div class="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+            <span class="p-1.5 rounded-lg bg-emerald-50 text-[#0D7A53]">
+                <i data-lucide="building-2" class="w-4 h-4"></i>
+            </span>
+            <div>
+                <span class="text-slate-400 text-[10px] uppercase font-bold block">Centro Activo:</span>
+                <span class="font-bold text-[#0C2340]"><?= htmlspecialchars($activeCentro['nombre_centro']) ?></span>
+            </div>
+            <span class="text-slate-300 mx-2 hidden sm:inline">&bull;</span>
+            <div class="hidden sm:block">
+                <span class="text-slate-400 text-[10px] uppercase font-bold block">Coordinación Académica:</span>
+                <span class="font-bold text-amber-700"><?= htmlspecialchars($activeCoord['nombre_coordinacion'] ?? 'Todas las Coordinaciones del Centro') ?></span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="<?= BASE_URL ?>/api/export_coordinacion_report.php?centro=<?= urlencode($activeCentroId) ?>&coordinacion=<?= urlencode($activeCoordId) ?>" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#0D7A53] border border-emerald-300 rounded-md font-semibold transition flex items-center gap-1.5">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Descargar Reporte (.CSV)</span>
+            </a>
+            <?php if (hasRole(['SUBDIRECTOR', 'ADMIN', 'LIDER_FORMACION', 'COORDINADOR'])): ?>
+                <a href="<?= BASE_URL ?>/subdirector.php?centro=<?= urlencode($activeCentroId) ?>" class="px-3 py-1.5 bg-[#0C2340] hover:bg-[#1B365D] text-white rounded-md font-semibold transition flex items-center gap-1.5">
+                    <i data-lucide="layout-dashboard" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Ver Dashboard Subdirector</span>
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+
     <!-- Power BI Embedded Container Wrapper -->
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         
@@ -98,6 +135,9 @@ require_once __DIR__ . '/includes/header.php';
         <!-- Filter & Control Ribbon -->
         <div class="bg-[#F8FAFC] px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
             <form method="GET" action="" id="filterForm" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <input type="hidden" name="centro" value="<?= htmlspecialchars($activeCentroId) ?>" />
+                <input type="hidden" name="coordinacion" value="<?= htmlspecialchars($activeCoordId) ?>" />
+                
                 <!-- Filtro Programa -->
                 <div class="flex items-center space-x-2">
                     <span class="font-semibold text-slate-700 flex items-center gap-1">

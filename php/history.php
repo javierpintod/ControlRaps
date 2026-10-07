@@ -9,9 +9,10 @@ require_once __DIR__ . '/includes/data_helper.php';
 
 $currentUser = requireAuth();
 $repo = new SenaRepository();
-$cargas = $repo->getCargas();
+$activeCentroId = getActiveCentroId();
+$cargas = $repo->getCargas($activeCentroId);
 
-$canRollback = hasRole(['ADMIN', 'LIDER_FORMACION']);
+$canRollback = hasRole(['ADMIN', 'LIDER_FORMACION', 'COORDINADOR']);
 
 require_once __DIR__ . '/includes/header.php';
 ?>

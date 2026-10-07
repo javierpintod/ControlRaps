@@ -1,122 +1,63 @@
-# 🎓 SENA Analytics Institutional - ControlRaps (Versión PHP + XAMPP + Supabase)
+# 🎓 SENA Analytics Institutional - ControlRaps (PHP + XAMPP + Supabase)
 
-Plataforma institucional de auditoría y analítica de juicios evaluativos del SENA con soporte para ingesta por lotes (Excel/CSV), control DirectQuery, matrices de aprendizaje y base de datos relacional en **Supabase (PostgreSQL)** alojada y publicada en un entorno local **XAMPP**.
+Plataforma institucional de auditoría y analítica de juicios evaluativos del SENA con arquitectura multi-centro y multi-coordinación, soporte para ingesta por lotes (Excel/CSV), control DirectQuery, dashboard para el Subdirector y base de datos relacional en **Supabase (PostgreSQL)** desplegada en **XAMPP**.
 
 ---
 
-## 🚀 Despliegue Inmediato en XAMPP
+## 🌟 Novedades: Múltiples Centros, Coordinaciones y Subdirección
 
-La aplicación ya ha sido construida y desplegada en tu servidor web Apache de XAMPP:
+1. **Catálogo Nacional Multi-Centro con Autocompletado Predictivo:**
+   * Selector con buscador en vivo en la cabecera: al escribir (ej. `CEET`, `Antioquia`, `Cundinamarca`, `Agro`, etc.) despliega instantáneamente los centros coincidentes con su regional, código y subdirector.
+   * Persistencia en sesión del centro activo (`$_SESSION['active_centro_id']`).
+   * Catálogo de 15+ centros oficiales del SENA (Distrito Capital, Antioquia, Cundinamarca, Atlántico, Caldas, Valle, Risaralda, etc.).
 
-- **Ruta de Despliegue en XAMPP:** `C:\xampp\htdocs\controlraps`
-- **URL de Acceso Local:** [http://localhost/controlraps/](http://localhost/controlraps/)
-- **Código Fuente en Proyecto:** Carpeta `php/`
+2. **Múltiples Coordinaciones Académicas:**
+   * Cada centro agrupa sus coordinaciones (ej. Teleinformática y Software, Redes y Ciberseguridad, Electrónica e IoT, Electricidad y Energía Solar, etc.).
+   * Selector dinámico de coordinación en la cabecera.
+   * Filtro y reportes exportables en CSV/Excel por coordinación.
+   * Nuevo rol `COORDINADOR` con permisos para gestionar sus fichas, cargar lotes y descargar reportes.
 
-Si realizas cambios en la carpeta `php/`, puedes sincronizarlos ejecutando en PowerShell:
+3. **Dashboard Estratégico del Subdirector (`subdirector.php`):**
+   * Panel de control gerencial para el Subdirector de Centro.
+   * **Tarjetas KPI Consolidadas:** Población activa, total coordinaciones, tasa de certificación y aprendices en riesgo del centro.
+   * **Semáforo de Rendimiento por Coordinación:** Indicador visual de cumplimiento (<span style="color:green">Verde &ge;85%</span>, <span style="color:orange">Amarillo 70%-84%</span>, <span style="color:red">Rojo &lt;70% o riesgo</span>).
+   * **Gráficos Comparativos (Chart.js):** Comparativa de tasas de aprobación y distribución de población por coordinación.
+   * **Matriz Tabular Gerencial:** Tabla con metas vs tasa real, brecha y exportación de informe consolidado.
+
+---
+
+## 🚀 Despliegue en XAMPP
+
+- **Ubicación en XAMPP:** `C:\xampp\htdocs\controlraps`
+- **URL Local:** [http://localhost/controlraps/](http://localhost/controlraps/)
+- **Dashboard del Subdirector:** [http://localhost/controlraps/subdirector.php](http://localhost/controlraps/subdirector.php)
+- **Diagnóstico Supabase:** [http://localhost/controlraps/test_connection.php](http://localhost/controlraps/test_connection.php)
+
+Para sincronizar cualquier cambio hacia XAMPP:
 ```powershell
 powershell -ExecutionPolicy Bypass -File "php/deploy_to_xampp.ps1"
 ```
 
 ---
 
-## 🗄️ Conexión con Supabase (Paso a Paso)
+## 👥 Usuarios y Perfiles Institucionales (RBAC)
 
-La aplicación cuenta con un cliente cURL PostgREST (`includes/Supabase.php`) de alta velocidad y un **Modo Demostración Automático** que permite utilizar todas las pantallas interactivamente mientras configuras tus credenciales de Supabase.
+En la pantalla de acceso ([http://localhost/controlraps/login.php](http://localhost/controlraps/login.php)) dispones de accesos rápidos con 1 solo clic:
 
-### 1. Crear el Proyecto en Supabase
-1. Ingresa a [https://supabase.com](https://supabase.com) e inicia sesión o crea una cuenta gratuita.
-2. Crea un nuevo proyecto (por ejemplo: `sena-controlraps`).
-
-### 2. Ejecutar el Script de Base de Datos
-1. En el panel de Supabase, ve a la sección **SQL Editor**.
-2. Abre o copia el contenido del archivo:
-   [`php/database/supabase_schema.sql`](file:///c:/Users/pinto/Downloads/clase%207%20de%20octubre/ControlRaps/php/database/supabase_schema.sql)
-3. Pega el script en el editor y presiona **Run**.
-   - Creará las tablas: `usuarios`, `programas`, `cargas_archivo`, `aprendices`, `juicios_evaluativos`.
-   - Creará los índices optimizados para DirectQuery.
-   - Creará las políticas de Row Level Security (RLS).
-   - Insertará los datos institucionales semilla.
-
-### 3. Configurar tus Credenciales en PHP
-1. En Supabase, dirígete a **Project Settings > API**.
-2. Copia tu **Project URL** y tu **anon public key**.
-3. Abre el archivo [`php/config.php`](file:///c:/Users/pinto/Downloads/clase%207%20de%20octubre/ControlRaps/php/config.php) (y en `C:\xampp\htdocs\controlraps\config.php`) y reemplaza:
-   ```php
-   define('SUPABASE_URL', 'https://tu-proyecto.supabase.co');
-   define('SUPABASE_KEY', 'tu_anon_public_key_aqui');
-   ```
-4. Abre [http://localhost/controlraps/test_connection.php](http://localhost/controlraps/test_connection.php) para verificar que la latencia y la conexión estén en verde.
-
----
-
-## 👥 Usuarios Institucionales y Roles (RBAC)
-
-La aplicación cuenta con control de acceso basado en roles. En la pantalla de login ([http://localhost/controlraps/login.php](http://localhost/controlraps/login.php)) dispones de botones de acceso rápido con 1 solo clic:
-
-| Usuario | Correo | Rol | Permisos |
+| Perfil | Correo | Rol | Centro / Coordinación |
 |---|---|---|---|
-| **Dr. Fernando Arango Botero** | `admin@sena.edu.co` | **ADMIN** | Control total, auditoría, rollbacks, carga masiva, diagnóstico. |
-| **Ing. Carlos Alberto Mendoza** | `gestor@sena.edu.co` | **LIDER_FORMACION** | Gestión académica, carga masiva Excel/CSV, rollbacks de lote. |
-| **Lic. Martha Gómez Restrepo** | `instructor@sena.edu.co` | **INSTRUCTOR** | Solo lectura del visor DirectQuery y expedientes (sin permisos de carga). |
+| **Dr. Jorge Eduardo Londoño** | `subdirector@sena.edu.co` | **SUBDIRECTOR** | CEET - Despacho de Subdirección (Visión Gerencial) |
+| **Ing. Claudia Patricia Duarte** | `coord.software@sena.edu.co` | **COORDINADOR** | CEET - Teleinformática y Desarrollo de Software |
+| **Ing. Harold Mauricio Morales** | `coord.redes@sena.edu.co` | **COORDINADOR** | CEET - Redes y Ciberseguridad |
+| **Dr. Fernando Arango Botero** | `admin@sena.edu.co` | **ADMIN** | Dirección General (Acceso Nacional) |
+| **Ing. Carlos Alberto Mendoza** | `gestor@sena.edu.co` | **LIDER_FORMACION** | CEET - Gestión y Auditoría de Lotes |
+| **Lic. Martha Gómez Restrepo** | `instructor@sena.edu.co` | **INSTRUCTOR** | CEET - Solo Lectura de Aprendices |
 
-*Contraseña por defecto para pruebas: `admin123` / `gestor123` / `instructor123` o `sena2026`.*
-
----
-
-## 🛠️ Módulos y Características
-
-### 1. Visor Power BI (DirectQuery) (`index.php`)
-- **Tarjetas KPI**: Total Aprendices, Juicios Evaluativos, Tasa de Aprobación Global (%) y Aprendices en Riesgo.
-- **Gráficos Interactivos (Chart.js)**: Distribución de Estados Académicos (Doughnut) y Tasa de Aprobación por Programa (Barras).
-- **Filtros Dinámicos**: Filtro por Programa, Filtro "Solo Aprendices Pendientes o En Riesgo" y buscador en vivo.
-- **Inspector DAX / SQL**: Muestra las consultas SQL enviadas a Supabase y fórmulas DAX Tabulares.
-- **Medidor de Latencia DirectQuery**: Muestra en tiempo real la velocidad de respuesta (ms) hacia la base de datos.
-
-### 2. Expediente del Aprendiz y Paz y Salvo Imprimible
-- Visualización de la totalidad de RAPs evaluados con estado, fecha e instructor evaluador.
-- **Sello Institucional de Paz y Salvo**: Se activa automáticamente cuando el aprendiz alcanza el 100% de RAPs aprobados.
-- **Botón de Impresión Directa**: Optimizado con estilos `@media print` para exportar a PDF o impresora física con formato oficial SENA.
-
-### 3. Carga Masiva (Batch Ingestion) (`upload.php`)
-- Carga de archivos `.xlsx`, `.xls` y `.csv` de hasta 25 MB mediante Drag and Drop.
-- Previsualización instantánea en cliente utilizando **SheetJS**.
-- Normalización automática de juicios evaluativos (Aprobado, Por Evaluar, No Aprobado).
-- Descarga de plantilla institucional oficial (`api/download_template.php`).
-- Detección y reporte exportable en CSV de inconsistencias.
-- Ingesta atómica hacia Supabase (`cargas_archivo` y `juicios_evaluativos`).
-
-### 4. Auditoría de Lotes y Reversión Atómica (`history.php`)
-- Historial completo de cargas con Batch ID (UUID), responsable, fecha de corte y estado.
-- Mecanismo de **Rollback Atómico**: Requiere confirmación con la palabra clave `ROLLBACK` y registro de justificación técnica, actualizando el estado y recalculando las métricas de los aprendices.
-
-### 5. Diagnóstico de Conexión (`test_connection.php`)
-- Monitoreo de latencia y estado de la API de Supabase en vivo.
-- Instrucciones detalladas de despliegue.
+*Clave por defecto: `subdirector123` / `coord123` / `admin123` / `gestor123` / `instructor123`.*
 
 ---
 
-## 📁 Estructura del Proyecto PHP
+## 🗄️ Supabase (PostgreSQL 15+)
 
-```text
-php/
-├── api/
-│   ├── download_template.php     # Generación de plantilla CSV oficial SENA
-│   ├── rollback_batch.php        # API de reversión atómica de lotes
-│   └── upload_batch.php          # API de ingesta estructurada a Supabase
-├── database/
-│   └── supabase_schema.sql       # Script DDL/DML completo para Supabase SQL Editor
-├── includes/
-│   ├── auth.php                  # Sesiones y middleware RBAC
-│   ├── data_helper.php           # Capa de datos y repositorio SENA
-│   ├── footer.php                # Pie de página institucional y scripts
-│   ├── header.php                # Barra superior SENA, latencia y selector de corte
-│   └── Supabase.php              # Cliente cURL PostgREST para Supabase
-├── config.php                    # Constantes y credenciales de Supabase
-├── deploy_to_xampp.ps1           # Script de despliegue automático hacia htdocs
-├── history.php                   # Auditoría de lotes y rollback
-├── index.php                     # Dashboard analítico Power BI DirectQuery
-├── login.php                     # Inicio de sesión con perfiles de prueba rápida
-├── logout.php                    # Cierre de sesión seguro
-├── README.md                     # Documentación completa del proyecto
-└── test_connection.php           # Diagnóstico y estado de conexión
-```
+El script DDL actualizado con soporte para múltiples centros y coordinaciones se encuentra en:
+[`php/database/supabase_schema.sql`](file:///c:/Users/pinto/Downloads/clase%207%20de%20octubre/ControlRaps/php/database/supabase_schema.sql)

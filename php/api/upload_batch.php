@@ -14,7 +14,7 @@ if (!isLoggedIn()) {
     exit;
 }
 
-if (!hasRole(['ADMIN', 'LIDER_FORMACION'])) {
+if (!hasRole(['ADMIN', 'LIDER_FORMACION', 'COORDINADOR'])) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Permisos insuficientes']);
     exit;

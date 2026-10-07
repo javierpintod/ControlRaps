@@ -9,10 +9,11 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/data_helper.php';
 
 $currentUser = requireAuth();
-requireRole(['ADMIN', 'LIDER_FORMACION']);
+requireRole(['ADMIN', 'LIDER_FORMACION', 'COORDINADOR']);
 
 $repo = new SenaRepository();
-$cargasExistentes = $repo->getCargas();
+$activeCentroId = getActiveCentroId();
+$cargasExistentes = $repo->getCargas($activeCentroId);
 
 require_once __DIR__ . '/includes/header.php';
 ?>

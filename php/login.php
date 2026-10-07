@@ -139,27 +139,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     Perfiles de Prueba Rápida (Selecciona uno para ingresar):
                 </p>
 
-                <div class="space-y-2">
-                    <!-- Admin -->
+                    <!-- Subdirector de Centro -->
                     <button
                         type="button"
-                        onclick="selectUser('admin@sena.edu.co', 'admin123')"
-                        class="w-full text-left p-2.5 rounded-lg border border-slate-700/80 hover:border-indigo-400/60 bg-[#081628]/60 hover:bg-[#081628] transition flex items-center justify-between group cursor-pointer"
+                        onclick="selectUser('subdirector@sena.edu.co', 'subdirector123')"
+                        class="w-full text-left p-2.5 rounded-lg border border-amber-500/50 hover:border-amber-400 bg-amber-950/20 hover:bg-amber-950/40 transition flex items-center justify-between group cursor-pointer"
                     >
                         <div class="flex items-center space-x-2.5">
-                            <div class="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[10px] border border-indigo-500/40">
-                                AD
+                            <div class="w-7 h-7 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-[10px] border border-amber-500/40">
+                                SD
                             </div>
                             <div>
-                                <div class="text-white font-medium text-[11px] group-hover:text-indigo-300 transition">
-                                    Dr. Fernando Arango Botero
+                                <div class="text-white font-medium text-[11px] group-hover:text-amber-300 transition">
+                                    Dr. Jorge Eduardo Londoño Ulloa
                                 </div>
                                 <div class="text-[10px] text-slate-400">
-                                    admin@sena.edu.co • <span class="text-indigo-400 font-semibold">ADMIN</span>
+                                    subdirector@sena.edu.co • <span class="text-amber-400 font-semibold">SUBDIRECTOR DE CENTRO</span>
                                 </div>
                             </div>
                         </div>
-                        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition"></i>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-300 group-hover:translate-x-0.5 transition"></i>
+                    </button>
+
+                    <!-- Coordinadora de Software -->
+                    <button
+                        type="button"
+                        onclick="selectUser('coord.software@sena.edu.co', 'coord123')"
+                        class="w-full text-left p-2.5 rounded-lg border border-cyan-500/40 hover:border-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 transition flex items-center justify-between group cursor-pointer"
+                    >
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-bold text-[10px] border border-cyan-500/40">
+                                CS
+                            </div>
+                            <div>
+                                <div class="text-white font-medium text-[11px] group-hover:text-cyan-300 transition">
+                                    Ing. Claudia Patricia Duarte Gómez
+                                </div>
+                                <div class="text-[10px] text-slate-400">
+                                    coord.software@sena.edu.co • <span class="text-cyan-400 font-semibold">COORDINADOR SOFTWARE</span>
+                                </div>
+                            </div>
+                        </div>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition"></i>
                     </button>
 
                     <!-- Gestor / Lider -->
@@ -182,6 +203,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition"></i>
+                    </button>
+
+                    <!-- Admin -->
+                    <button
+                        type="button"
+                        onclick="selectUser('admin@sena.edu.co', 'admin123')"
+                        class="w-full text-left p-2.5 rounded-lg border border-slate-700/80 hover:border-indigo-400/60 bg-[#081628]/60 hover:bg-[#081628] transition flex items-center justify-between group cursor-pointer"
+                    >
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[10px] border border-indigo-500/40">
+                                AD
+                            </div>
+                            <div>
+                                <div class="text-white font-medium text-[11px] group-hover:text-indigo-300 transition">
+                                    Dr. Fernando Arango Botero
+                                </div>
+                                <div class="text-[10px] text-slate-400">
+                                    admin@sena.edu.co • <span class="text-indigo-400 font-semibold">ADMIN NACIONAL</span>
+                                </div>
+                            </div>
+                        </div>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition"></i>
                     </button>
 
                     <!-- Instructor -->
